@@ -6,7 +6,7 @@ import webbrowser
 import random
 from datetime import datetime
 
-REPO_FORK = "https://huggingface.co/datasets/<your_user>/SHA-256-Proyect"  # <-- put your HF fork URL here
+REPO_FORK = "https://huggingface.co/datasets/PolloLOL/SHA-256-Proyect"
 REPO_DIR = "SHA-256-Proyect"
 CSV_FILE = os.path.join(REPO_DIR, "collisions.csv")
 
@@ -53,7 +53,7 @@ def open_pr_link(branch):
 def sha256(s):
     return hashlib.sha256(s.encode()).hexdigest()
 
-def random_string(min_len=3, max_len=15):
+def random_string(min_len=3, max_len=3999):
     charset = "abcdefghijklmnopqrstuvwxyz0123456789"
     length = random.randint(min_len, max_len)
     return ''.join(random.choice(charset) for _ in range(length))
@@ -81,4 +81,4 @@ def main(target_suffix="deadbe", min_len=3, max_len=15):
         tried.add(candidate)
 
 if __name__ == "__main__":
-    main(target_suffix="deadbe", min_len=3, max_len=15)
+    main(target_suffix="deadbe", min_len=3, max_len=3999)
