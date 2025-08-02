@@ -1,23 +1,33 @@
 import hashlib
 import os
-import time
 import csv
-import webbrowser
-from datetime import datetime
 import subprocess
+import webbrowser
+import random
+from datetime import datetime
 
-REPO_FORK = "https://huggingface.co/datasets/<user>/SHA-256-Proyect"
-REPO_ORIGINAL = "https://huggingface.co/datasets/PolloLOL/SHA-256-Proyect"
+REPO_FORK = "https://huggingface.co/datasets/<your_user>/SHA-256-Proyect"  # <-- put your HF fork URL here
 REPO_DIR = "SHA-256-Proyect"
 CSV_FILE = os.path.join(REPO_DIR, "collisions.csv")
-
 
 def clone_or_pull():
     if not os.path.exists(REPO_DIR):
         subprocess.run(["git", "clone", REPO_FORK])
+        print("[+] Fork cloned!")
     else:
         subprocess.run(["git", "-C", REPO_DIR, "pull"])
+        print("[+] Fork updated!")
 
+def load_existing_inputs():
+    inputs = set()
+    if os.path.exists(CSV_FILE):
+        with open(CSV_FILE, newline="") as f:
+            reader = csv.reader(f)
+            next(reader, None)  # Skip header
+            for row in reader:
+                inputs.add(row[0])
+                inputs.add(row[1])
+    return inputs
 
 def append_and_commit(input1, input2, hash_val, collision_type):
     timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
@@ -35,45 +45,40 @@ def append_and_commit(input1, input2, hash_val, collision_type):
     print("[✓] Collision committed and pushed!")
     open_pr_link(branch)
 
-
 def open_pr_link(branch):
     pr_url = f"{REPO_FORK}/pull/new/{branch}"
     print(f"[→] Open this URL to create a pull request: {pr_url}")
     webbrowser.open(pr_url)
 
-
 def sha256(s):
     return hashlib.sha256(s.encode()).hexdigest()
 
-
-def increment_string(s):
+def random_string(min_len=3, max_len=15):
     charset = "abcdefghijklmnopqrstuvwxyz0123456789"
-    s = list(s)
-    i = len(s) - 1
-    while i >= 0:
-        if s[i] == charset[-1]:
-            s[i] = charset[0]
-            i -= 1
-        else:
-            s[i] = charset[charset.index(s[i]) + 1]
-            break
-    return ''.join(s)
+    length = random.randint(min_len, max_len)
+    return ''.join(random.choice(charset) for _ in range(length))
 
-
-def process_range(start, end, target_suffix="deadbe"):
+def main(target_suffix="deadbe", min_len=3, max_len=15):
+    print("[+] Fully randomized client with PR support and smart skipping...")
+    clone_or_pull()
+    existing_inputs = load_existing_inputs()
     hash_dict = {}
-    current = start
-    while current <= end:
-        h = sha256(current)
-        if h in hash_dict and hash_dict[h] != current:
-            append_and_commit(hash_dict[h], current, h, "total")
+    tried = set()
+    while True:
+        candidate = random_string(min_len, max_len)
+        if candidate in existing_inputs or candidate in tried:
+            continue
+        h = sha256(candidate)
+        if h in hash_dict and hash_dict[h] != candidate:
+            print(f"[!!!] Total collision found:")
+            print(f"    {hash_dict[h]} and {candidate} => {h}")
+            append_and_commit(hash_dict[h], candidate, h, "total")
+            break
         if h.endswith(target_suffix):
-            append_and_commit(current, current, h, "partial")
-        hash_dict[h] = current
-        current = increment_string(current)
-
+            print(f"[!!!] Partial collision found: {candidate} => {h}")
+            append_and_commit(candidate, candidate, h, "partial")
+        hash_dict[h] = candidate
+        tried.add(candidate)
 
 if __name__ == "__main__":
-    print("[+] Client started with PR support...")
-    clone_or_pull()
-    process_range("aaa", "aaf")
+    main(target_suffix="deadbe", min_len=3, max_len=15)
